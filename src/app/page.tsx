@@ -1,65 +1,155 @@
-import Image from "next/image";
+﻿import Link from 'next/link';
+import Image from 'next/image'; 
+import prisma from '@/lib/prisma';
 
-export default function Home() {
+const TASA_CAMBIO = 24.75;
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: { category?: string; search?: string };
+}) {
+  // Extraemos los parámetros de la URL [cite: 17-09-2025]
+  const selectedCategory = searchParams.category;
+  const searchTerm = searchParams.search;
+
+  let whereClause: any = {};
+
+  // Construcción de la consulta dinámica a PostgreSQL/SQLite [cite: 17-09-2025]
+  if (selectedCategory || searchTerm) {
+    const conditions = [];
+
+    if (selectedCategory) {
+      conditions.push({ category: selectedCategory });
+    }
+
+    if (searchTerm) {
+      // Normalización para búsquedas sin acentos
+      const termClean = searchTerm
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      conditions.push({
+        OR: [
+          { searchName: { contains: termClean } },
+          { brand: { contains: termClean } },
+          { name: { contains: termClean } },
+        ],
+      });
+    }
+
+    if (conditions.length > 0) {
+      whereClause = { AND: conditions };
+    }
+  }
+
+  const products = await prisma.product.findMany({
+    where: whereClause,
+    orderBy: { id: 'desc' } // Los más nuevos primero
+  });
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="p-8 bg-gray-50 min-h-screen">
+      {/* Encabezado Dinámico basado en la búsqueda */}
+      <h1 className="text-4xl font-black mb-12 text-center uppercase tracking-tighter text-secondary">
+        {searchTerm ? (
+          <>Resultados para: <span className="text-primary">"{searchTerm}"</span></>
+        ) : selectedCategory ? (
+          <>Instrumentos: <span className="text-primary">{selectedCategory}</span></>
+        ) : (
+          "🎸 Catálogo Rockero"
+        )}
+      </h1>
+      
+      {/* Estado Vacío */}
+      {products.length === 0 && (
+        <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-gray-300 max-w-2xl mx-auto shadow-sm">
+          <p className="text-gray-500 text-lg font-bold">No encontramos instrumentos que coincidan.</p>
+          <p className="text-sm text-gray-400 mt-2">
+            Intenta con términos generales o verifica la categoría.
           </p>
+          <Link href="/" className="text-primary font-black underline mt-6 inline-block hover:text-secondary transition uppercase italic text-xs"> 
+            Ver todo el catálogo 
+          </Link>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+
+      {/* Grid de Productos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-7xl mx-auto">
+        {products.map((product) => {
+          const precioLempiras = product.price * TASA_CAMBIO;
+
+          return (
+            <div key={product.id} className="bg-white border border-gray-100 rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 flex flex-col group">
+              {/* Imagen con Link */}
+              <Link href={`/product/${product.id}`} className="relative h-72 w-full overflow-hidden bg-accent">
+                <Image 
+                  src={product.imageUrl || '/placeholder.jpg'} 
+                  alt={product.name} 
+                  fill
+                  className="object-cover group-hover:scale-110 transition-transform duration-700"
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  priority={product.id <= 3}
+                />
+                <div className="absolute top-6 right-6 bg-secondary text-white px-4 py-2 rounded-2xl font-black text-sm shadow-xl">
+                  L {precioLempiras.toLocaleString('es-HN', { maximumFractionDigits: 0 })}
+                </div>
+              </Link>
+
+              <div className="p-8 flex flex-col flex-grow">
+                <div className="mb-4 flex justify-between items-start gap-2">
+                  <div>
+                    <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-1">{product.brand}</p>
+                    <Link href={`/product/${product.id}`}>
+                      <h2 className="text-2xl font-black text-secondary group-hover:text-primary transition-colors duration-300 leading-tight">
+                        {product.name}
+                      </h2>
+                    </Link>
+                  </div>
+                  
+                  {/* Badge de Stock Dinámico [cite: 17-09-2025] */}
+                  <div className="shrink-0">
+                    {product.stock <= 0 ? (
+                      <span className="bg-red-50 text-red-500 text-[9px] font-black px-3 py-1.5 rounded-full uppercase border border-red-100">Agotado</span>
+                    ) : product.stock <= 5 ? (
+                      <span className="bg-orange-50 text-orange-600 text-[9px] font-black px-3 py-1.5 rounded-full uppercase border border-orange-100 animate-pulse">Últimas {product.stock}</span>
+                    ) : (
+                      <span className="bg-green-50 text-green-600 text-[9px] font-black px-3 py-1.5 rounded-full uppercase border border-green-100">Disponible</span>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-gray-400 text-sm line-clamp-2 mb-8 italic font-medium leading-relaxed">
+                  {product.description}
+                </p>
+                
+                <div className="mt-auto pt-6 border-t border-gray-50 flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-none">Precio</span>
+                    <span className="text-2xl font-black text-secondary">
+                      L {precioLempiras.toLocaleString('es-HN', { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  
+                  <Link href={`/product/${product.id}`}>
+                    <button 
+                      disabled={product.stock <= 0}
+                      className={`px-8 py-4 rounded-2xl font-black transition-all duration-300 uppercase italic text-xs tracking-tighter shadow-lg ${
+                        product.stock <= 0 
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none" 
+                        : "bg-secondary text-white hover:bg-primary hover:-translate-y-1 active:scale-95 shadow-secondary/20"
+                      }`}
+                    >
+                      {product.stock <= 0 ? "Sin Stock" : "Comprar"}
+                    </button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </main>
   );
 }

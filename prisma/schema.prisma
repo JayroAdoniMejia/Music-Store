@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de Usuarios para la Music Store
+model User {
+  id        Int      @id @default(autoincrement())
+  nombre    String?  // Cambiado de 'name' a 'nombre' para coincidir con el formulario
+  email     String   @unique
+  password  String   // Se guardará encriptada con bcrypt
+  role      String   @default("CLIENTE") // "CLIENTE" o "ADMIN"
+  createdAt DateTime @default(now())
+  
+  // Relación: Un usuario puede tener muchas órdenes
+  orders    Order[]
+}
+
+model Product {
+  id          Int          @id @default(autoincrement())
+  name        String
+  searchName  String?  
+  brand       String
+  description String
+  price       Float
+  stock       Int          @default(0)
+  category    String
+  imageUrl    String?
+  createdAt   DateTime     @default(now())
+  
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  total     Float
+  status    String      @default("pending")
+  createdAt DateTime    @default(now())
+  
+  // Relación con Usuario
+  userId    Int
+  user      User        @relation(fields: [userId], references: [id])
+  
+  items     OrderItem[]
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float   
+}
