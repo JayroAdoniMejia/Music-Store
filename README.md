@@ -25,11 +25,12 @@ Sigue estos pasos para ejecutar el proyecto localmente:
 1. **Clonar el repositorio:**
    ```bash
    git clone [https://github.com/JayroAdoniMejia/Music-Store.git](https://github.com/JayroAdoniMejia/Music-Store.git)
-   cd Music-Store
+   cd Music-Store ```
 
 ## Instalar dependencias
 ```bash
-npm install
+npm install 
+```
 
 ## Configurar variables de entorno 🔑
 Crea un archivo .env en la raíz del proyecto basado en el archivo .env.example y añade tus credenciales:
@@ -45,16 +46,16 @@ STRIPE_WEBHOOK_SECRET=tu_whsec_...
 
 # App URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-
+```
 
 # Preparar la Base de Datos 🗄️
 ```bash
-npx prisma migrate dev 
+npx prisma migrate dev ```
 
 # Iniciar el servidor
 ```bash
 npm run dev
-
+```
 
 📸 Vistas del Proyecto
 🛒 Home: Catálogo completo de instrumentos musicales.
