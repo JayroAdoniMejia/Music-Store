@@ -49,10 +49,13 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 # Preparar la Base de Datos 🗄️
+
 ```bash
-npx prisma migrate dev ```
+npx prisma migrate dev 
+```
 
 # Iniciar el servidor
+
 ```bash
 npm run dev
 ```
