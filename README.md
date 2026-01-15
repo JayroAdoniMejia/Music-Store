@@ -28,14 +28,13 @@ Sigue estos pasos para ejecutar el proyecto localmente:
    cd Music-Store
 
 ## Instalar dependencias
-Bash
+```bash
 npm install
 
 ## Configurar variables de entorno 🔑
 Crea un archivo .env en la raíz del proyecto basado en el archivo .env.example y añade tus credenciales:
 
-
-
+```bash
 # Database
 DATABASE_URL="file:./dev.db"
 
@@ -49,10 +48,11 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 
 # Preparar la Base de Datos 🗄️
-
+```bash
 npx prisma migrate dev 
 
 # Iniciar el servidor
+```bash
 npm run dev
 
 
