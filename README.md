@@ -26,4 +26,41 @@ Sigue estos pasos para ejecutar el proyecto localmente:
    ```bash
    git clone [https://github.com/JayroAdoniMejia/Music-Store.git](https://github.com/JayroAdoniMejia/Music-Store.git)
    cd Music-Store
+
+## Instalar dependencias
+Bash
+npm install
+
+## Configurar variables de entorno 🔑
+Crea un archivo .env en la raíz del proyecto basado en el archivo .env.example y añade tus credenciales:
+
+
+
+# Database
+DATABASE_URL="file:./dev.db"
+
+# Stripe Keys
+STRIPE_SECRET_KEY=tu_sk_test_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=tu_pk_test_...
+STRIPE_WEBHOOK_SECRET=tu_whsec_...
+
+# App URL
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+
+# Preparar la Base de Datos 🗄️
+
+npx prisma migrate dev 
+
+# Iniciar el servidor
+npm run dev
+
+
+📸 Vistas del Proyecto
+🛒 Home: Catálogo completo de instrumentos musicales.
+
+📊 Admin Dashboard: Visualización de métricas de ventas y gestión de stock.
+
+💳 Stripe Checkout: Flujo de pago seguro e integrado con Webhooks.
+
 Desarrollado por Jayro Mejia
