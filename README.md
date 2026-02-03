@@ -1,6 +1,6 @@
 # 🎸 Music Store & Admin Dashboard
 
-Un sistema de E-commerce musical moderno desarrollado con **Next.js 14**, que incluye una tienda para clientes y un panel administrativo completo para la gestión de productos y análisis de ventas.
+Un sistema de E-commerce musical moderno desarrollado con **Next.js 15.1**, que incluye una tienda para clientes y un panel administrativo completo para la gestión de productos y análisis de ventas.
 
 ## Características principaless
 - **Tienda Virtual:** Catálogo de instrumentos con carrito de compras funcional.
