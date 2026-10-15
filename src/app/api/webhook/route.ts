@@ -29,22 +29,50 @@ export async function POST(req: Request) {
     // Convertir userId a Int
     const userId = parseInt(session.metadata?.userId || "0");
 
-    // Recuperar items detallados desde Stripe
-    const checkoutSession = await stripe.checkout.sessions.retrieve(session.id, {
-      expand: ['line_items.data.price.product'],
-    });
-
-    const lineItems = checkoutSession.line_items?.data;
-
-    if (!lineItems || userId === 0) {
-      console.error("❌ Datos de sesión incompletos.");
-      return new NextResponse("Datos incompletos", { status: 400 });
+    if (userId === 0) {
+      console.error("❌ userId es inválido o no existe en los metadatos de la sesión.");
+      return new NextResponse("UserId inválido", { status: 400 });
     }
 
     try {
-      // Transacción atómica: o se guarda todo o nada (Igual que en FUNDESUR)
+      // 1. Recuperar los ítems detallados desde Stripe
+      const checkoutSession = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ['line_items.data.price.product'],
+      });
+
+      const lineItems = checkoutSession.line_items?.data;
+
+      if (!lineItems || lineItems.length === 0) {
+        console.error("❌ La sesión de checkout no contiene productos.");
+        return new NextResponse("Datos de productos incompletos", { status: 400 });
+      }
+
+      // 2. Resolver los productos en SQLite FUERA de la transacción para evitar bloqueos/timeouts
+      const itemsParaProcesar: { product: any; quantity: number; price: number }[] = [];
+
+      for (const item of lineItems) {
+        const productName = (item.description || "").trim();
+
+        // Buscar producto por nombre exacto
+        const product = await prisma.product.findFirst({
+          where: { name: productName },
+        });
+
+        if (!product) {
+          console.error(`❌ Producto no encontrado en DB: "${productName}"`);
+          throw new Error(`Producto no encontrado en DB: ${productName}`);
+        }
+
+        itemsParaProcesar.push({
+          product,
+          quantity: item.quantity || 1,
+          price: (item.price?.unit_amount || 0) / 100,
+        });
+      }
+
+      // 3. Transacción atómica ultrarrápida (solo operaciones de escritura)
       await prisma.$transaction(async (tx) => {
-        // 1. Crear la Orden
+        // A. Crear la Orden
         const order = await tx.order.create({
           data: {
             userId: userId,
@@ -53,38 +81,25 @@ export async function POST(req: Request) {
           },
         });
 
-        // 2. Procesar cada producto
-        for (const item of lineItems) {
-          const productName = item.description || "";
-
-          const product = await tx.product.findFirst({
-            where: { name: productName }
+        // B. Crear OrderItems y descontar stock
+        for (const item of itemsParaProcesar) {
+          await tx.orderItem.create({
+            data: {
+              orderId: order.id,
+              productId: item.product.id,
+              quantity: item.quantity,
+              price: item.price,
+            },
           });
 
-          if (product) {
-            // Crear el item de la orden
-            await tx.orderItem.create({
-              data: {
-                orderId: order.id,
-                productId: product.id,
-                quantity: item.quantity || 1,
-                price: (item.price?.unit_amount || 0) / 100,
-              }
-            });
-
-            // Descontar del inventario
-            await tx.product.update({
-              where: { id: product.id },
-              data: { stock: { decrement: item.quantity || 1 } }
-            });
-          } else {
-            // Error crítico si el producto no existe en DB pero sí en Stripe
-            throw new Error(`Producto no encontrado en DB: ${productName}`);
-          }
+          await tx.product.update({
+            where: { id: item.product.id },
+            data: { stock: { decrement: item.quantity } },
+          });
         }
       });
 
-      console.log(`✅ Orden #${session.id} completada para el usuario ${userId}`);
+      console.log(`✅ Orden creada y stock descontado exitosamente para el usuario ${userId} (Sesión: ${session.id})`);
 
     } catch (dbError: any) {
       console.error("❌ Error en DB Webhook:", dbError.message);
@@ -92,6 +107,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Responder a Stripe que recibimos el aviso correctamente
+  // Responder inmediatamente a Stripe con un 200 OK
   return NextResponse.json({ received: true });
 }
